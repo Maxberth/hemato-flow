@@ -1,0 +1,398 @@
+// HematoFlow — Esquema de base de datos (consultorio de hematología INSN)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────
+enum Rol {
+  SUPERADMIN
+  ADMIN
+  MEDICO
+  ASISTENTE_SOCIAL
+  ENFERMERO
+}
+
+enum Etiqueta {
+  ROJA
+  AMARILLA
+  VERDE
+}
+
+enum Banda {
+  CERCANA
+  REGIONAL
+  DISTANTE
+}
+
+enum Canal {
+  WHATSAPP
+  TELEGRAM
+}
+
+enum CitaEstado {
+  PROPUESTA
+  PROGRAMADA
+  CONFIRMADA
+  EN_ATENCION
+  ASISTIDA
+  NO_LLEGO
+  CANCELADA
+}
+
+enum Servicio {
+  AMBULATORIO
+  CONSULTA
+}
+
+enum CamillaEstado {
+  LIBRE
+  OCUPADA
+  PREPARACION
+}
+
+enum OrigenCita {
+  INICIAL
+  REPROGRAMACION
+}
+
+enum LoteEstado {
+  ABIERTO
+  APROBADO
+  RECHAZADO
+}
+
+enum AvisoTipo {
+  AVISO_CITA
+  RECORDATORIO
+  REPROGRAMACION
+  PREGUNTA_MOTIVO
+}
+
+enum AvisoEstado {
+  PROGRAMADO
+  ENVIADO
+  FALLIDO
+}
+
+enum TareaTipo {
+  SILENCIO
+  INASISTENCIA
+}
+
+enum TareaEstado {
+  PENDIENTE
+  EN_PROCESO
+  RESUELTA
+}
+
+enum CausaCatalogo {
+  TRANSPORTE
+  ECONOMICO
+  FAMILIAR
+  EDUCATIVO
+  GEOGRAFICO
+  INFORMACION
+  SALUD
+  OTRO
+}
+
+// ── Configuración editable ─────────────────────────────
+model Configuracion {
+  clave       String   @id
+  valor       Json
+  descripcion String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Usuarios (RBAC) ────────────────────────────────────
+model Usuario {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  rol          Rol
+  nombre       String?
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+}
+
+// ── Equipo médico responsable por paciente ─────────────
+model Profesional {
+  id           String   @id @default(cuid())
+  nombre       String
+  especialidad String?
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+
+  pacientes PacienteProfesional[]
+  horarios  HorarioMedico[]
+  citas     Cita[]            @relation("DoctorCitas")
+}
+
+model PacienteProfesional {
+  pacienteId    String
+  profesionalId String
+  asignadoPor   String?
+  creadoEn      DateTime @default(now())
+  paciente      Paciente    @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  profesional   Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+
+  @@unique([pacienteId, profesionalId])
+  @@index([profesionalId])
+}
+
+// ── Catálogo de procedimientos ─────────────────────────
+model TipoProcedimiento {
+  id          String @id @default(cuid())
+  nombre      String @unique
+  duracionMin Int
+
+  pacientes Paciente[]
+  citas     Cita[]
+}
+
+// ── Pacientes ──────────────────────────────────────────
+model Paciente {
+  id                  String               @id @default(cuid())
+  numeroHash          String               @unique
+  numeroCifrado       String
+  /** Chat de Telegram vinculado (flujo "compartir contacto"): el paciente se
+   *  registra con su celular y al compartirlo con el bot se guarda aquí. */
+  telegramChatId      String?              @unique
+  nombres             String
+  etiqueta            Etiqueta             @default(VERDE)
+  banda               Banda                @default(CERCANA)
+  fechaObjetivo       DateTime
+  canal               Canal                @default(WHATSAPP)
+  /** Hora fija de cita "HH:mm" asignada por la enfermera según la receta:
+   *  queda guardada para futuras programaciones hasta que el doctor lo pase
+   *  a consulta otra vez. El motor la respeta como inicio del bloque. */
+  horaPreferida       String?
+  tipoProcedimientoId String
+  frecuenciaDias      Int?
+  hospitalizado       Boolean              @default(false)
+  activo              Boolean              @default(true)
+  servicio            Servicio             @default(CONSULTA)
+  creadoEn            DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tipoProcedimiento TipoProcedimiento    @relation(fields: [tipoProcedimientoId], references: [id])
+  responsables      PacienteProfesional[]
+  citas             Cita[]
+  tareasSociales    TareaSocial[]
+  mensajes          Mensaje[]
+
+  @@index([etiqueta, activo])
+  @@index([banda])
+}
+
+// ── Cupos diarios del servicio ambulatorio ─────────────
+// Una fila = ese día hay cupos ambulatorios (posiciones) y N camillas.
+model CupoDiario {
+  fecha     DateTime @id @db.Date
+  cantidad  Int      @default(10)
+  camillas  Int      @default(2)
+  updatedAt DateTime @updatedAt
+}
+
+// ── Horarios médicos de consulta (doctor × día) ────────
+// Una fila = ese doctor atiende consultas ese día con `cupo` posiciones.
+model HorarioMedico {
+  id           String   @id @default(cuid())
+  profesionalId String
+  fecha        DateTime @db.Date
+  cupo         Int      @default(8)
+  profesional  Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+
+  @@unique([profesionalId, fecha])
+  @@index([fecha])
+}
+
+// ── Planificación (lotes) ──────────────────────────────
+model LotePlanificacion {
+  id           String      @id @default(cuid())
+  estado       LoteEstado  @default(ABIERTO)
+  generadoPor  String
+  generadoEn   DateTime    @default(now())
+  decididoPor  String?
+  decididoEn   DateTime?
+  motivoRechazo String?
+  sinCupo      Json?
+
+  citas Cita[]
+
+  @@index([estado, generadoEn])
+}
+
+// ── Citas ──────────────────────────────────────────────
+model Cita {
+  id                  String       @id @default(cuid())
+  pacienteId          String
+  loteId              String?
+  fecha               DateTime     @db.Date
+  servicio            Servicio     @default(CONSULTA)
+  doctorId            String?
+  turno               Int?
+  horaEstimada        String?
+  duracionMin         Int
+  tipoProcedimientoId String
+  estado              CitaEstado   @default(PROPUESTA)
+  origen              OrigenCita   @default(INICIAL)
+  citaPreviaId        String?
+  llegadaEn           DateTime?
+  confirmadaEn        DateTime?
+  asistidaEn          DateTime?
+  motivoCancelacion   String?
+  justificacion       Json?
+  creadoEn            DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  paciente          Paciente          @relation(fields: [pacienteId], references: [id])
+  lote              LotePlanificacion? @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  doctor            Profesional?      @relation("DoctorCitas", fields: [doctorId], references: [id], onDelete: SetNull)
+  tipoProcedimiento TipoProcedimiento @relation(fields: [tipoProcedimientoId], references: [id])
+  citaPrevia        Cita?             @relation("Reprogramacion", fields: [citaPreviaId], references: [id], onDelete: SetNull)
+  reprogramaciones  Cita[]            @relation("Reprogramacion")
+  camillaDia        CamillaDia?       @relation("CamillaCita")
+  avisos            Aviso[]
+  tareasSociales    TareaSocial[]
+  causaInasistencia CausaInasistencia?
+
+  @@index([fecha, estado])
+  @@index([doctorId, fecha])
+  @@index([pacienteId, estado])
+  @@index([loteId])
+}
+
+// ── Camillas del día (cola viva ambulatorio) ───────────
+model CamillaDia {
+  id          String        @id @default(cuid())
+  fecha       DateTime      @db.Date
+  numero      Int
+  estado      CamillaEstado @default(LIBRE)
+  citaId      String?       @unique
+  estadoDesde DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  cita   Cita?          @relation("CamillaCita", fields: [citaId], references: [id], onDelete: SetNull)
+  eventos CamillaEvento[]
+
+  @@unique([fecha, numero])
+  @@index([fecha, estado])
+}
+
+// ── Historial de tiempos por camilla (métricas) ────────
+model CamillaEvento {
+  id          String        @id @default(cuid())
+  camillaDiaId String
+  fecha       DateTime      @db.Date
+  citaId      String?
+  pacienteId  String?
+  estado      CamillaEstado
+  inicio      DateTime
+  fin         DateTime?
+  duracionMin Int?
+
+  camillaDia CamillaDia @relation(fields: [camillaDiaId], references: [id], onDelete: Cascade)
+
+  @@index([fecha])
+  @@index([camillaDiaId])
+}
+
+// ── Avisos (cola de notificaciones outbox) ─────────────
+model Aviso {
+  id             String      @id @default(cuid())
+  citaId         String
+  tipo           AvisoTipo
+  canal          Canal
+  mensaje        String
+  programadoPara DateTime
+  enviadoEn      DateTime?
+  estado         AvisoEstado @default(PROGRAMADO)
+  intentos       Int         @default(0)
+  error          String?
+
+  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([estado, programadoPara])
+  @@index([citaId])
+}
+
+// ── Trabajo social (silencios e inasistencias) ─────────
+model TareaSocial {
+  id         String      @id @default(cuid())
+  pacienteId String
+  citaId     String?
+  tipo       TareaTipo
+  estado     TareaEstado @default(PENDIENTE)
+  venceEn    DateTime
+  asignadaA  String?
+  resultado  String?
+  resueltaEn DateTime?
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  cita     Cita?    @relation(fields: [citaId], references: [id], onDelete: SetNull)
+
+  @@index([estado, venceEn])
+  @@index([pacienteId])
+}
+
+// ── Causas de inasistencia (factores del concurso) ─────
+model CausaInasistencia {
+  id        String        @id @default(cuid())
+  citaId    String        @unique
+  causa     CausaCatalogo
+  textoLibre String?
+  creadoEn  DateTime      @default(now())
+
+  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([causa, creadoEn])
+}
+
+// ── Auditoría (append-only) ────────────────────────────
+model Auditoria {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorRol  Rol?
+  accion    String
+  entidad   String
+  entidadId String?
+  detalle   Json?
+  creadoEn  DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([creadoEn])
+}
+
+// ── Conversación del bot (audit) ───────────────────────
+model Mensaje {
+  id         String    @id @default(cuid())
+  pacienteId String?
+  sid        String?   @unique
+  remitente  String
+  contenido  String?
+  creadoEn   DateTime  @default(now())
+
+  paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId, creadoEn])
+}
+
+// ── Idempotencia a nivel de evento ─────────────────────
+model WebhookEvent {
+  sid               String    @id
+  fromHash          String
+  estado            String    @default("RECIBIDO")
+  error             String?
+  payload           Json?
+  intentosReintento Int       @default(0)
+  creadoEn          DateTime  @default(now())
+  procesadoEn       DateTime?
+
+  @@index([fromHash, creadoEn])
+}

@@ -1,0 +1,4 @@
+# Configuración de despliegue
+# Railway: el comando start es `bun run start` (ver Procfile)
+
+node_linker = "hoisted"

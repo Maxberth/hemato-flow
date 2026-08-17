@@ -1,0 +1,212 @@
+/* Cronograma del lote (vis-timeline) — Tema HematoFlow */
+.cronograma-lote {
+  position: relative;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.cronograma-lote .vis-timeline {
+  border: none;
+  background: #ffffff;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+.cronograma-lote .vis-panel.vis-top,
+.cronograma-lote .vis-panel.vis-bottom,
+.cronograma-lote .vis-panel.vis-left {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.cronograma-lote .vis-labelset .vis-label {
+  color: #1a2b3c;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: #f8fafc;
+}
+
+.cronograma-lote .vis-foreground .vis-group {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cronograma-lote .vis-time-axis .vis-text {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  padding-top: 4px;
+}
+
+.cronograma-lote .vis-time-axis .vis-text.vis-major {
+  color: #1a2b3c;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.cronograma-lote .vis-grid.vis-minor {
+  border-color: #f1f5f9;
+}
+
+.cronograma-lote .vis-grid.vis-major {
+  border-color: #e2e8f0;
+}
+
+/* Tarjetas de Cita en el Cronograma (Gantt Items) */
+.cronograma-lote .vis-item.vis-line,
+.cronograma-lote .vis-item.vis-dot {
+  display: none !important;
+}
+
+.cronograma-lote .vis-item {
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.25;
+  padding: 3px 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.cronograma-lote .vis-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 15 !important;
+}
+
+.cronograma-lote .vis-item .tl-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cronograma-lote .vis-item .tl-nombre {
+  font-weight: 700;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.cronograma-lote .vis-item .tl-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cronograma-lote .vis-item .tl-hora {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 9.5px;
+  padding: 0 3px;
+  border-radius: 4px;
+}
+
+/* Colores Temáticos por Prioridad Clínica */
+/* ROJA - Carmesí Oficial */
+.cronograma-lote .vis-item.tl-prioridad-roja {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border: 1.5px solid #f87171 !important;
+  border-left: 5px solid #c1272d !important;
+  z-index: 10 !important;
+  box-shadow: 0 1px 3px rgba(193, 39, 45, 0.15) !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-roja .tl-nombre {
+  color: #7f1d1d !important;
+  font-weight: 700 !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-roja .tl-hora {
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 700;
+}
+
+/* AMARILLA - Amber Oficial */
+.cronograma-lote .vis-item.tl-prioridad-amarilla {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border: 1.5px solid #fcd34d !important;
+  border-left: 5px solid #f59e0b !important;
+  z-index: 10 !important;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15) !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-amarilla .tl-nombre {
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-amarilla .tl-hora {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 700;
+}
+
+/* VERDE - Success Oficial */
+.cronograma-lote .vis-item.tl-prioridad-verde {
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  border: 1.5px solid #86efac !important;
+  border-left: 5px solid #10b981 !important;
+  z-index: 10 !important;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15) !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-verde .tl-nombre {
+  color: #14532d !important;
+  font-weight: 700 !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-verde .tl-hora {
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 700;
+}
+
+/* OCUPADO PREVIO - Gris / Patrón rayado sutil */
+.cronograma-lote .vis-item.tl-prioridad-ocupado {
+  background: #f8fafc !important;
+  background-image: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 6px, #f8fafc 6px, #f8fafc 12px) !important;
+  color: #64748b !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-left: 4px solid #94a3b8 !important;
+  opacity: 0.75 !important;
+  z-index: 1 !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-ocupado .tl-nombre {
+  color: #475569 !important;
+  font-weight: 500 !important;
+}
+.cronograma-lote .vis-item.tl-prioridad-ocupado .tl-hora {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.cronograma-lote .vis-item.vis-selected {
+  box-shadow: 0 0 0 2px #0077c8 !important;
+}
+
+/* Tooltip */
+.cronograma-lote .vis-tooltip {
+  background: #1a2b3c;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 8px 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  line-height: 1.4;
+  z-index: 50;
+}

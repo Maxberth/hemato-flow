@@ -1,0 +1,40 @@
+{
+  "name": "hematoflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "bun prisma/seed.ts",
+    "db:generate": "prisma generate",
+    "web": "bun web-app/index.ts",
+    "web:build": "bun run --cwd web-app build",
+    "web:dev": "bun run --cwd web-app dev",
+    "web:check": "bun run --cwd web-app typecheck",
+    "sim": "bun scripts/hemato-sim.ts",
+    "db:backup": "bash scripts/backup.sh",
+    "db:restore": "bash scripts/backup.sh --restore",
+    "reset:demo": "bun scripts/reset-demo.ts",
+    "historia:demo": "bun scripts/historia-demo.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.55.0",
+    "@prisma/client": "^6.7.0",
+    "date-fns": "^4.1.0",
+    "hono": "^4.9.0",
+    "pino": "^10.3.1",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "prisma": "^6.7.0",
+    "typescript": "^5.8.0"
+  }
+}
