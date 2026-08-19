@@ -67,9 +67,48 @@ app.all("/api/*", async (c) => {
 
 const DIST = "./web-app/dist";
 
+// Bun.file + new Response(archivo) no siempre setea Content-Type según la
+// extensión (depende de la versión de Bun). Para módulos ES el navegador
+// exige MIME estricto (text/javascript), así que lo fijamos manualmente.
+const MIME: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".wasm": "application/wasm",
+  ".map": "application/json; charset=utf-8",
+};
+
+function mimeDe(ruta: string): string {
+  const ext = ruta.slice(ruta.lastIndexOf(".")).toLowerCase();
+  return MIME[ext] ?? "application/octet-stream";
+}
+
 async function servirArchivo(ruta: string): Promise<Response | null> {
   const archivo = Bun.file(`${DIST}${ruta}`);
-  if (await archivo.exists()) return new Response(archivo);
+  if (await archivo.exists()) {
+    // index.html: no cachear (es el entry point que referencia assets hasheados).
+    // Assets con hash en el nombre: cache inmutable de 1 año.
+    const esHtml = ruta.endsWith(".html");
+    const cacheControl = esHtml
+      ? "no-cache, no-store, must-revalidate"
+      : "public, max-age=31536000, immutable";
+    return new Response(archivo, {
+      headers: { "content-type": mimeDe(ruta), "cache-control": cacheControl },
+    });
+  }
   return null;
 }
 
