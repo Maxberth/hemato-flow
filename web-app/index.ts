@@ -34,16 +34,27 @@ app.all("/api/*", async (c) => {
   const url = c.req.url;
   const target = `${API_BASE}${new URL(url).pathname}${new URL(url).search}`;
 
-  // Copiar headers manualmente (evita bugs de new Headers(src) en algunas
-  // versiones de Bun donde Authorization no se propaga). Filtramos host y
-  // content-length que fetch recalcula.
+  // Forward explícito de headers. Leemos Authorization con c.req.header()
+  // (API de Hono) en vez de iterar c.req.raw.headers, que en algunas
+  // versiones de Bun no expone Authorization correctamente.
   const headers = new Headers();
+  const authHeader = c.req.header("authorization");
+  if (authHeader) headers.set("authorization", authHeader);
+  const contentTypeReq = c.req.header("content-type");
+  if (contentTypeReq) headers.set("content-type", contentTypeReq);
+
+  // Copiar cualquier otro header relevante que no sea host/content-length.
   c.req.raw.headers.forEach((valor, clave) => {
     const lower = clave.toLowerCase();
-    if (lower !== "host" && lower !== "content-length") {
+    if (lower !== "host" && lower !== "content-length" && lower !== "authorization" && lower !== "content-type") {
       headers.set(clave, valor);
     }
   });
+
+  // DEBUG temporal: log para ver qué headers llegan al proxy.
+  console.log(`[proxy] ${c.req.method} ${target}`);
+  console.log(`[proxy] authorization presente: ${!!authHeader}`);
+  console.log(`[proxy] headers enviados:`, JSON.stringify(Object.fromEntries(headers.entries())));
 
   const body = c.req.method === "GET" || c.req.method === "HEAD" ? undefined : await c.req.arrayBuffer();
 
@@ -63,12 +74,11 @@ app.all("/api/*", async (c) => {
     );
   }
 
-  // Propagar la respuesta respetando el status original de la API (401, 403,
-  // 404, 500, etc.) y copiando content-type para que el cliente sepa cómo
-  // parsear el body.
+  // Propagar la respuesta respetando el status original de la API.
   const respHeaders = new Headers();
   const ct = resp.headers.get("content-type");
   if (ct) respHeaders.set("content-type", ct);
+  console.log(`[proxy] respuesta API: status=${resp.status}`);
   return new Response(resp.body, {
     status: resp.status,
     headers: respHeaders,
