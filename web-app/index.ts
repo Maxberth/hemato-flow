@@ -10,7 +10,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-const PUERTO = Number(process.env.WEB_APP_PORT ?? 3002);
+// Railway enruta el tráfico externo al puerto de PORT; WEB_APP_PORT es fallback
+// para desarrollo local. 0.0.0.0 es obligatorio en contenedores (127.0.0.1 no
+// es alcanzable desde fuera).
+const PUERTO = Number(process.env.PORT ?? process.env.WEB_APP_PORT ?? 3002);
 const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3000";
 
 const app = new Hono();
@@ -86,6 +89,6 @@ app.get("*", async (c) => {
 // ── Arranque ────────────────────────────────────────────
 
 if (import.meta.main) {
-  Bun.serve({ port: PUERTO, hostname: "127.0.0.1", fetch: app.fetch });
-  console.log(`🧪 Panel HematoFlow en http://127.0.0.1:${PUERTO} (proxy /api → ${API_BASE})`);
+  Bun.serve({ port: PUERTO, hostname: "0.0.0.0", fetch: app.fetch });
+  console.log(`🧪 Panel HematoFlow en http://0.0.0.0:${PUERTO} (proxy /api → ${API_BASE})`);
 }
