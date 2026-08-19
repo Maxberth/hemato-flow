@@ -34,9 +34,16 @@ app.all("/api/*", async (c) => {
   const url = c.req.url;
   const target = `${API_BASE}${new URL(url).pathname}${new URL(url).search}`;
 
-  const headers = new Headers(c.req.raw.headers);
-  headers.delete("host");
-  headers.delete("content-length"); // fetch recalcula con el body real
+  // Copiar headers manualmente (evita bugs de new Headers(src) en algunas
+  // versiones de Bun donde Authorization no se propaga). Filtramos host y
+  // content-length que fetch recalcula.
+  const headers = new Headers();
+  c.req.raw.headers.forEach((valor, clave) => {
+    const lower = clave.toLowerCase();
+    if (lower !== "host" && lower !== "content-length") {
+      headers.set(clave, valor);
+    }
+  });
 
   const body = c.req.method === "GET" || c.req.method === "HEAD" ? undefined : await c.req.arrayBuffer();
 
@@ -56,10 +63,15 @@ app.all("/api/*", async (c) => {
     );
   }
 
-  const contentType = resp.headers.get("content-type") ?? "application/json";
+  // Propagar la respuesta respetando el status original de la API (401, 403,
+  // 404, 500, etc.) y copiando content-type para que el cliente sepa cómo
+  // parsear el body.
+  const respHeaders = new Headers();
+  const ct = resp.headers.get("content-type");
+  if (ct) respHeaders.set("content-type", ct);
   return new Response(resp.body, {
     status: resp.status,
-    headers: { "content-type": contentType },
+    headers: respHeaders,
   });
 });
 
